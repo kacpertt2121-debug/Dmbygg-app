@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (adminUsersCard) adminUsersCard.style.display = 'none';
             if (adminQuotesCard) adminQuotesCard.style.display = 'none';
         }
+        renderTable(); // Odśwież tabelę po zmianie uprawnień
     }
 
     // Obsługa trybu Logowania / Rejestracji
@@ -507,7 +508,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!monthSelect) return;
 
         const monthsSet = new Set();
+        // Zwykły użytkownik bierze pod uwagę tylko swoje miesiące
+        const effectivelyAdmin = isAdmin && !isWorkerPreviewMode;
+        
         globalTimeEntries.forEach(entry => {
+            if (!effectivelyAdmin && entry.userId !== currentUser.uid) return;
             if (entry.date) monthsSet.add(entry.date.substring(0, 7));
         });
 
@@ -544,13 +549,21 @@ document.addEventListener('DOMContentLoaded', function() {
         const effectivelyAdmin = isAdmin && !isWorkerPreviewMode;
 
         let entriesToRender = globalTimeEntries.filter(entry => {
-            // Zwykły użytkownik / podgląd pracownika widzi TYLKO swoje wpisy
-            if (!effectivelyAdmin && entry.userId !== currentUser.uid) return false;
-            // Administrator widzi wybrane filtry
-            if (effectivelyAdmin && selectedEmp !== 'ALL' && entry.userName !== selectedEmp) return false;
+            // BEZPIECZEŃSTWO: Jeśli użytkownik nie jest administratorem w trybie pełnym,
+            // sprawdzamy rygorystycznie czy wpis należy do jego UID.
+            if (!effectivelyAdmin) {
+                if (!currentUser || entry.userId !== currentUser.uid) {
+                    return false;
+                }
+            } else {
+                // Filtry dla administratora
+                if (selectedEmp !== 'ALL' && entry.userName !== selectedEmp) return false;
+            }
+
             if (selectedProject !== 'ALL' && entry.project !== selectedProject) return false;
             if (selectedType !== 'ALL' && entry.type !== selectedType) return false;
             if (selectedMonth && entry.date && !entry.date.startsWith(selectedMonth)) return false;
+            
             return true;
         });
 
