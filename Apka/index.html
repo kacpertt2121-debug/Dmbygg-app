@@ -10,8 +10,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <!-- html2pdf.js do eksportu oferty PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -125,7 +123,7 @@
                         <p>Przeglądaj wpisy i drukuj do PDF</p>
                     </div>
 
-                    <!-- NOWY KAFEL: GENERATOR OFERT (Tylko Admin) -->
+                    <!-- KAFEL: GENERATOR OFERT (Tylko Admin) -->
                     <div class="dashboard-card" id="adminQuotesCard" onclick="switchView('quotesView')" style="display: none;">
                         <div class="card-icon icon-purple">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
@@ -155,7 +153,7 @@
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                         </div>
                         <h3>Informacje</h3>
-                        <p>DM Bygg Cloud v3.6</p>
+                        <p>DM Bygg Cloud v3.7</p>
                     </div>
                 </div>
             </div>
@@ -349,75 +347,86 @@
                 </button>
             </div>
 
-            <!-- NOWY MODUŁ: TWORZENIE OFERT Z MATERIAŁAMI, ROBOCIZNĄ, MOMS 25% I ROT -->
+            <!-- MODUŁ TWORZENIA OFERT (Z wyborem języka i natywnym drukiem PDF) -->
             <div id="quotesView" class="view-section">
+                <!-- Pasek wyboru języka na samej górze (tylko do podglądu/edycji, znika przy druku) -->
+                <div class="no-print" style="background: var(--bg-card); padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);">
+                    <div>
+                        <label for="quoteLangSelect" style="margin: 0; font-weight: bold; color: var(--accent-amber);">Język oferty (Language / Språk):</label>
+                    </div>
+                    <div>
+                        <select id="quoteLangSelect" onchange="changeQuoteLanguage()" style="width: 200px; padding: 8px;">
+                            <option value="en">English (Angielski)</option>
+                            <option value="sv">Svenska (Szwedzki)</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="card" id="quotePdfContent" style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 30px; border-radius: 12px;">
+                    
+                    <!-- Nagłówek drukowany / PDF -->
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
                         <div>
                             <h2>DM BYGG AB</h2>
-                            <p class="subtitle">Oficjalna Oferta Cenowa</p>
+                            <p class="subtitle" id="lblSubtitle">Official Price Quote</p>
                         </div>
                         <div style="text-align: right;">
-                            <h3>OFERTA</h3>
-                            <p style="margin: 2px 0; color: var(--text-secondary);">Nr: <strong>OFF/2026/001</strong></p>
-                            <p style="margin: 2px 0; color: var(--text-secondary);">Data: <input type="date" id="quoteDate" class="inline-input" style="width: 140px; display: inline-block;"></p>
+                            <h3 id="lblHeaderTitle">QUOTE / OFFER</h3>
+                            <p style="margin: 2px 0; color: var(--text-secondary);"><span id="lblQuoteNoText">Nr</span>: <strong>OFF/2026/001</strong></p>
+                            <p style="margin: 2px 0; color: var(--text-secondary);"><span id="lblDateText">Data</span>: <input type="date" id="quoteDate" class="inline-input" style="width: 130px; display: inline-block;"></p>
                         </div>
                     </div>
 
                     <div class="form-grid" style="margin-bottom: 20px;">
                         <div class="form-group">
-                            <label for="quoteClientName">Nazwa Klienta / Firma:</label>
+                            <label id="lblClientLabel" for="quoteClientName">Client / Company:</label>
                             <input type="text" id="quoteClientName" placeholder="np. Jan Kowalski / Builder AB">
                         </div>
                         <div class="form-group">
-                            <label for="quoteClientAddress">Adres Inwestycji:</label>
+                            <label id="lblAddressLabel" for="quoteClientAddress">Investment Address:</label>
                             <input type="text" id="quoteClientAddress" placeholder="np. Storgatan 12, Göteborg">
                         </div>
                     </div>
 
                     <hr class="divider">
 
-                    <h3>1. Materiały</h3>
+                    <h3 id="lblMaterialsHeader">1. Materials</h3>
                     <div class="report-table-container" style="margin-bottom: 15px;">
                         <table class="report-table">
                             <thead>
                                 <tr>
-                                    <th>Nazwa / Opis materiału</th>
-                                    <th width="90">Ilość</th>
-                                    <th width="80">Jedn.</th>
-                                    <th width="120">Cena jedn. (SEK)</th>
-                                    <th width="130">Suma (SEK)</th>
-                                    <th width="50" class="no-print">Akcja</th>
+                                    <th id="thMaterialName">Material Name / Description</th>
+                                    <th width="90" id="thQty">Qty</th>
+                                    <th width="80" id="thUnit">Unit</th>
+                                    <th width="120" id="thUnitPrice">Unit Price (SEK)</th>
+                                    <th width="130" id="thTotal">Total (SEK)</th>
+                                    <th width="50" class="no-print">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="materialsList">
-                                <!-- Dynamiczne wiersze materiałów -->
-                            </tbody>
+                            <tbody id="materialsList"></tbody>
                         </table>
                     </div>
-                    <button type="button" class="btn-secondary no-print" onclick="addMaterialRow()">+ Dodaj materiał</button>
+                    <button type="button" class="btn-secondary no-print" id="btnAddMaterial" onclick="addMaterialRow()">+ Add Material</button>
 
                     <hr class="divider" style="margin: 25px 0;">
 
-                    <h3>2. Robocizna / Prace</h3>
+                    <h3 id="lblLaborHeader">2. Labor / Works</h3>
                     <div class="report-table-container" style="margin-bottom: 15px;">
                         <table class="report-table">
                             <thead>
                                 <tr>
-                                    <th>Zakres prac / Opis</th>
-                                    <th width="90">Ilość/Rbg</th>
-                                    <th width="80">Jedn.</th>
-                                    <th width="120">Stawka (SEK)</th>
-                                    <th width="130">Suma (SEK)</th>
-                                    <th width="50" class="no-print">Akcja</th>
+                                    <th id="thLaborDesc">Work Scope / Description</th>
+                                    <th width="90" id="thHoursQty">Hours/Qty</th>
+                                    <th width="80" id="thLaborUnit">Unit</th>
+                                    <th width="120" id="thRate">Rate (SEK)</th>
+                                    <th width="130" id="thLaborTotal">Total (SEK)</th>
+                                    <th width="50" class="no-print">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="laborList">
-                                <!-- Dynamiczne wiersze robocizny -->
-                            </tbody>
+                            <tbody id="laborList"></tbody>
                         </table>
                     </div>
-                    <button type="button" class="btn-secondary no-print" onclick="addLaborRow()">+ Dodaj pozycję prac</button>
+                    <button type="button" class="btn-secondary no-print" id="btnAddLabor" onclick="addLaborRow()">+ Add Labor Position</button>
 
                     <hr class="divider" style="margin: 25px 0;">
 
@@ -426,39 +435,39 @@
                         <div style="flex: 1; min-width: 280px; background: #152238; padding: 18px; border-radius: 10px; border: 1px solid var(--border-color);">
                             <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 8px;">
                                 <input type="checkbox" id="rotCheckbox" onchange="calculateQuoteTotals()" style="width: auto; cursor: pointer;">
-                                <strong style="color: var(--accent-amber);">Zastosuj odliczenie ROT-avdrag (30%)</strong>
+                                <strong id="lblRotTitle" style="color: var(--accent-amber);">Apply ROT-avdrag deduction (30%)</strong>
                             </label>
-                            <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">Odlicza 30% od kosztów robocizny (zgodnie z przepisami w Szwecji, do limitu 50 000 SEK).</p>
+                            <p id="lblRotDesc" style="font-size: 13px; color: var(--text-secondary); margin: 0;">Deducts 30% from labor costs according to Swedish tax regulations (up to 50,000 SEK limit).</p>
                         </div>
 
                         <div style="width: 320px; background: #152238; padding: 18px; border-radius: 10px; border: 1px solid var(--border-color);">
                             <div class="summary-row" style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px;">
-                                <span style="color: var(--text-secondary);">Suma Materiały:</span>
+                                <span id="lblSumMaterials" style="color: var(--text-secondary);">Materials Sum:</span>
                                 <strong id="sumMaterials">0.00 SEK</strong>
                             </div>
                             <div class="summary-row" style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px;">
-                                <span style="color: var(--text-secondary);">Suma Robocizna:</span>
+                                <span id="lblSumLabor" style="color: var(--text-secondary);">Labor Sum:</span>
                                 <strong id="sumLabor">0.00 SEK</strong>
                             </div>
                             <div class="summary-row" style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px;">
-                                <span style="color: var(--text-secondary);">Moms (VAT 25%):</span>
+                                <span id="lblSumVat" style="color: var(--text-secondary);">Moms (VAT 25%):</span>
                                 <strong id="sumVat">0.00 SEK</strong>
                             </div>
                             <div class="summary-row" id="rotRow" style="display: none; justify-content: space-between; margin-bottom: 8px; font-size: 14px; color: var(--accent-green);">
-                                <span>Odliczenie ROT (-30%):</span>
+                                <span id="lblRotDeduction">ROT Deduction (-30%):</span>
                                 <strong id="sumRot">-0.00 SEK</strong>
                             </div>
                             <div style="border-top: 2px solid var(--border-color); margin-top: 10px; padding-top: 10px; display: flex; justify-content: space-between; font-size: 16px;">
-                                <span><strong>RAZEM BRUTTO:</strong></span>
+                                <span id="lblGrandTotal"><strong>TOTAL GROSS:</strong></span>
                                 <strong id="sumTotal" style="color: var(--accent-amber);">0.00 SEK</strong>
                             </div>
                         </div>
                     </div>
 
                     <div style="margin-top: 30px; text-align: right;" class="no-print">
-                        <button type="button" class="btn-success" style="width: auto; display: inline-flex;" onclick="generateQuotePDF()">
+                        <button type="button" class="btn-success" style="width: auto; display: inline-flex;" onclick="window.print()">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            Pobierz Ofertę jako PDF
+                            <span id="lblPrintBtnText">Drukuj / Zapisz ofertę jako PDF</span>
                         </button>
                     </div>
                 </div>

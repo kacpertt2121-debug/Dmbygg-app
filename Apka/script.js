@@ -599,21 +599,123 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // =========================================================================
-    // LOGIKA MODUŁU OFERT (Materiały, Robocizna, Moms 25%, ROT 30%)
+    // LOGIKA MODUŁU OFERT (Angielski / Szwedzki + Dynamiczne wiersze + ROT)
     // =========================================================================
     
-    // Dodanie domyślnych wierszy przy starcie
     setTimeout(() => {
         addMaterialRow();
         addLaborRow();
+        changeQuoteLanguage(); // Ustawienie domyślnych etykiet (angielski)
     }, 500);
+
+    // Słownik tłumaczeń dla ofert (Angielski / Szwedzki)
+    const quoteTranslations = {
+        en: {
+            subtitle: "Official Price Quote",
+            headerTitle: "QUOTE / OFFER",
+            quoteNo: "No",
+            date: "Date",
+            clientLabel: "Client / Company:",
+            addressLabel: "Investment Address:",
+            materialsHeader: "1. Materials",
+            thMaterialName: "Material Name / Description",
+            thQty: "Qty",
+            thUnit: "Unit",
+            thUnitPrice: "Unit Price (SEK)",
+            thTotal: "Total (SEK)",
+            action: "Action",
+            btnAddMaterial: "+ Add Material",
+            laborHeader: "2. Labor / Works",
+            thLaborDesc: "Work Scope / Description",
+            thHoursQty: "Hours/Qty",
+            thLaborUnit: "Unit",
+            thRate: "Rate (SEK)",
+            thLaborTotal: "Total (SEK)",
+            btnAddLabor: "+ Add Labor Position",
+            rotTitle: "Apply ROT-avdrag deduction (30%)",
+            rotDesc: "Deducts 30% from labor costs according to Swedish tax regulations (up to 50,000 SEK limit).",
+            sumMaterials: "Materials Sum:",
+            sumLabor: "Labor Sum:",
+            sumVat: "Moms (VAT 25%):",
+            rotDeduction: "ROT Deduction (-30%):",
+            grandTotal: "TOTAL GROSS:",
+            printBtnText: "Drukuj / Zapisz ofertę jako PDF"
+        },
+        sv: {
+            subtitle: "Officiell Offert",
+            headerTitle: "OFFERT",
+            quoteNo: "Nr",
+            date: "Datum",
+            clientLabel: "Kund / Företag:",
+            addressLabel: "Projektadress:",
+            materialsHeader: "1. Material",
+            thMaterialName: "Materialnamn / Beskrivning",
+            thQty: "Antal",
+            thUnit: "Enhet",
+            thUnitPrice: "Á-pris (SEK)",
+            thTotal: "Totalt (SEK)",
+            action: "Åtgärd",
+            btnAddMaterial: "+ Lägg till material",
+            laborHeader: "2. Arbete / Arbetstid",
+            thLaborDesc: "Arbetsbeskrivning / Omfattning",
+            thHoursQty: "Timmar/Antal",
+            thLaborUnit: "Enhet",
+            thRate: "Timpris (SEK)",
+            thLaborTotal: "Totalt (SEK)",
+            btnAddLabor: "+ Lägg till arbete",
+            rotTitle: "Tillämpa ROT-avdrag (30%)",
+            rotDesc: "Drar av 30% på arbetskostnaden enligt Skatteverkets regler (upp till 50 000 SEK per person).",
+            sumMaterials: "Summa Material:",
+            sumLabor: "Summa Arbete:",
+            sumVat: "Moms (25%):",
+            rotDeduction: "ROT-avdrag (-30%):",
+            grandTotal: "ATT BETALA BRUTTO:",
+            printBtnText: "Skriv ut / Spara offert som PDF"
+        }
+    };
+
+    window.changeQuoteLanguage = function() {
+        const langSelect = document.getElementById('quoteLangSelect');
+        if (!langSelect) return;
+        const lang = langSelect.value;
+        const t = quoteTranslations[lang];
+
+        document.getElementById('lblSubtitle').textContent = t.subtitle;
+        document.getElementById('lblHeaderTitle').textContent = t.headerTitle;
+        document.getElementById('lblQuoteNoText').textContent = t.quoteNo;
+        document.getElementById('lblDateText').textContent = t.date;
+        document.getElementById('lblClientLabel').textContent = t.clientLabel;
+        document.getElementById('lblAddressLabel').textContent = t.addressLabel;
+        document.getElementById('lblMaterialsHeader').textContent = t.materialsHeader;
+        document.getElementById('thMaterialName').textContent = t.thMaterialName;
+        document.getElementById('thQty').textContent = t.thQty;
+        document.getElementById('thUnit').textContent = t.thUnit;
+        document.getElementById('thUnitPrice').textContent = t.thUnitPrice;
+        document.getElementById('thTotal').textContent = t.thTotal;
+        document.getElementById('btnAddMaterial').textContent = t.btnAddMaterial;
+        document.getElementById('lblLaborHeader').textContent = t.laborHeader;
+        document.getElementById('thLaborDesc').textContent = t.thLaborDesc;
+        document.getElementById('thHoursQty').textContent = t.thHoursQty;
+        document.getElementById('thLaborUnit').textContent = t.thLaborUnit;
+        document.getElementById('thRate').textContent = t.thRate;
+        document.getElementById('thLaborTotal').textContent = t.thLaborTotal;
+        document.getElementById('btnAddLabor').textContent = t.btnAddLabor;
+        document.getElementById('lblRotTitle').textContent = t.rotTitle;
+        document.getElementById('lblRotDesc').textContent = t.rotDesc;
+        document.getElementById('lblSumMaterials').textContent = t.sumMaterials;
+        document.getElementById('lblSumLabor').textContent = t.sumLabor;
+        document.getElementById('lblSumVat').textContent = t.sumVat;
+        document.getElementById('lblRotDeduction').textContent = t.rotDeduction;
+        document.getElementById('lblGrandTotal').innerHTML = `<strong>${t.grandTotal}</strong>`;
+        document.getElementById('lblPrintBtnText').textContent = t.printBtnText;
+    };
 
     window.addMaterialRow = function() {
         const tbody = document.getElementById('materialsList');
         if (!tbody) return;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><input type="text" class="m-name" placeholder="np. Płyta K-G 12.5mm"></td>
+            <td><input type="text" class="m-name" placeholder="np. Płyta K-G"></td>
             <td><input type="number" class="m-qty" value="1" min="0" step="any" oninput="calculateQuoteTotals()"></td>
             <td><input type="text" class="m-unit" value="szt."></td>
             <td><input type="number" class="m-price" value="0" min="0" step="0.01" oninput="calculateQuoteTotals()"></td>
@@ -629,7 +731,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!tbody) return;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><input type="text" class="l-name" placeholder="np. Montaż ścianki działowej"></td>
+            <td><input type="text" class="l-name" placeholder="np. Montaż ścianki"></td>
             <td><input type="number" class="l-qty" value="1" min="0" step="any" oninput="calculateQuoteTotals()"></td>
             <td><input type="text" class="l-unit" value="rbg"></td>
             <td><input type="number" class="l-price" value="0" min="0" step="0.01" oninput="calculateQuoteTotals()"></td>
@@ -662,7 +764,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         const netTotal = materialsSum + laborSum;
-        const vatAmount = netTotal * 0.25; // Szwedzki podatek Moms 25%
+        const vatAmount = netTotal * 0.25; // Szwedzki Moms 25%
         let grandTotal = netTotal + vatAmount;
 
         const rotCheckbox = document.getElementById('rotCheckbox');
@@ -670,11 +772,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (rotCheckbox && rotCheckbox.checked) {
             if (rotRow) rotRow.style.display = 'flex';
-            // ROT-avdrag: 30% zniżki na koszty robocizny (wliczając Moms na robociznę), max 50 000 SEK
             let laborGross = laborSum * 1.25;
             let rotDiscount = laborGross * 0.30;
             if (rotDiscount > 50000) {
-                rotDiscount = 50000;
+                rotDiscount = 50000; // Limit 50 000 SEK
             }
 
             const sumRot = document.getElementById('sumRot');
@@ -693,21 +794,5 @@ document.addEventListener('DOMContentLoaded', function() {
         if (sumLabor) sumLabor.textContent = laborSum.toFixed(2) + ' SEK';
         if (sumVat) sumVat.textContent = vatAmount.toFixed(2) + ' SEK';
         if (sumTotal) sumTotal.textContent = grandTotal.toFixed(2) + ' SEK';
-    };
-
-    window.generateQuotePDF = function() {
-        const element = document.getElementById('quotePdfContent');
-        const clientNameInput = document.getElementById('quoteClientName');
-        const clientName = clientNameInput && clientNameInput.value.trim() ? clientNameInput.value.trim() : 'Klient';
-
-        const opt = {
-            margin:       10,
-            filename:     `Oferta_DM_Bygg_${clientName.replace(/\s+/g, '_')}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        html2pdf().set(opt).from(element).save();
     };
 });

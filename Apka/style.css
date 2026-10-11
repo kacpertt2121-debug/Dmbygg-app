@@ -354,7 +354,7 @@ button {
 }
 
 /* ========================================================================= */
-/* STYLIZACJA WYDRUKU / PDF                                                  */
+/* STYLIZACJA WYDRUKU / PDF (Identyczna dla godzin i ofert)                   */
 /* ========================================================================= */
 @media print {
     body {
@@ -377,5 +377,36 @@ button {
         margin-bottom: 20px;
         border-bottom: 2px solid #000;
         padding-bottom: 10px;
+    }
+    .print-header h2 {
+        margin: 0 0 5px 0;
+        font-size: 20px;
+        color: #000;
+    }
+    .print-header p {
+        margin: 0;
+        font-size: 13px;
+        color: #333;
+    }
+    .report-table-container {
+        border: none !important;
+        background: #ffffff !important;
+        border-radius: 0 !important;
+    }
+    .report-table th {
+        background-color: #f1f5f9 !important;
+        color: #000 !important;
+        border-bottom: 2px solid #000 !important;
+    }
+    .report-table td {
+        color: #000 !important;
+        border-bottom: 1px solid #cbd5e1 !important;
+    }
+    /* Styl pól tekstowych w ofercie przy druku na czysto */
+    input, select, textarea {
+        background: transparent !important;
+        color: #000000 !important;
+        border: none !important;
+        padding: 2px !important;
     }
 }
