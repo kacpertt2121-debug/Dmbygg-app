@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentUser = null;
     let currentUserProfile = null;
     let isAdmin = false;
+    let isWorkerPreviewMode = false; // Flaga trybu podglądu pracownika przez admina
     let globalTimeEntries = [];
     let globalProjects = [];
 
@@ -48,6 +49,61 @@ document.addEventListener('DOMContentLoaded', function() {
             homeBtn.style.display = (targetId === 'homeView') ? 'none' : 'flex';
         }
     };
+
+    // Przełącznik widoku admina na widok pracownika
+    window.toggleAdminViewMode = function() {
+        isWorkerPreviewMode = !isWorkerPreviewMode;
+        const btn = document.getElementById('adminToggleViewBtn');
+        if (btn) {
+            btn.textContent = isWorkerPreviewMode ? '🔓 Wyłącz podgląd (Wróć do Admina)' : '👁️ Podgląd jako pracownik';
+            btn.style.background = isWorkerPreviewMode ? 'var(--accent-green)' : 'var(--accent-purple)';
+        }
+        applyUIPermissions();
+        switchView('homeView');
+    };
+
+    function applyUIPermissions() {
+        const roleBadge = document.getElementById('roleBadge');
+        const employeeFilterGroup = document.getElementById('employeeFilterGroup');
+        const adminUsersCard = document.getElementById('adminUsersCard');
+        const adminQuotesCard = document.getElementById('adminQuotesCard');
+        const adminToggleViewBtn = document.getElementById('adminToggleViewBtn');
+
+        if (isAdmin) {
+            if (adminToggleViewBtn) adminToggleViewBtn.style.display = 'block';
+
+            if (isWorkerPreviewMode) {
+                // Tryb symulacji pracownika dla admina
+                if (roleBadge) {
+                    roleBadge.textContent = 'PRACOWNIK (PODGLĄD)';
+                    roleBadge.className = 'badge badge-worker';
+                }
+                if (employeeFilterGroup) employeeFilterGroup.style.display = 'none';
+                if (adminUsersCard) adminUsersCard.style.display = 'none';
+                if (adminQuotesCard) adminQuotesCard.style.display = 'none';
+            } else {
+                // Pełny tryb administratora
+                if (roleBadge) {
+                    roleBadge.textContent = 'ADMIN';
+                    roleBadge.className = 'badge badge-admin';
+                }
+                if (employeeFilterGroup) employeeFilterGroup.style.display = 'block';
+                if (adminUsersCard) adminUsersCard.style.display = 'block';
+                if (adminQuotesCard) adminQuotesCard.style.display = 'block';
+                listenToAllUsers();
+            }
+        } else {
+            // Zwykły pracownik
+            if (adminToggleViewBtn) adminToggleViewBtn.style.display = 'none';
+            if (roleBadge) {
+                roleBadge.textContent = 'PRACOWNIK';
+                roleBadge.className = 'badge badge-worker';
+            }
+            if (employeeFilterGroup) employeeFilterGroup.style.display = 'none';
+            if (adminUsersCard) adminUsersCard.style.display = 'none';
+            if (adminQuotesCard) adminQuotesCard.style.display = 'none';
+        }
+    }
 
     // Obsługa trybu Logowania / Rejestracji
     let isSignUpMode = false;
@@ -142,6 +198,7 @@ document.addEventListener('DOMContentLoaded', function() {
             currentUser = null;
             currentUserProfile = null;
             isAdmin = false;
+            isWorkerPreviewMode = false;
             const authView = document.getElementById('authView');
             const mainApp = document.getElementById('mainApp');
             if (authView) authView.style.display = 'block';
@@ -200,27 +257,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (currentUserName) currentUserName.textContent = fullNameDisplay;
         if (currentUserEmail) currentUserEmail.textContent = user.email;
 
-        const roleBadge = document.getElementById('roleBadge');
-        const employeeFilterGroup = document.getElementById('employeeFilterGroup');
-        const adminUsersCard = document.getElementById('adminUsersCard');
-        const adminQuotesCard = document.getElementById('adminQuotesCard');
-
-        if (roleBadge) {
-            if (isAdmin) {
-                roleBadge.textContent = 'ADMIN';
-                roleBadge.className = 'badge badge-admin';
-                if (employeeFilterGroup) employeeFilterGroup.style.display = 'block';
-                if (adminUsersCard) adminUsersCard.style.display = 'block';
-                if (adminQuotesCard) adminQuotesCard.style.display = 'block';
-                listenToAllUsers();
-            } else {
-                roleBadge.textContent = 'PRACOWNIK';
-                roleBadge.className = 'badge badge-worker';
-                if (employeeFilterGroup) employeeFilterGroup.style.display = 'none';
-                if (adminUsersCard) adminUsersCard.style.display = 'none';
-                if (adminQuotesCard) adminQuotesCard.style.display = 'none';
-            }
-        }
+        applyUIPermissions();
 
         if (!currentUserProfile.firstName || !currentUserProfile.lastName || currentUserProfile.firstName.trim() === '' || currentUserProfile.lastName.trim() === '') {
             alert('Twoje konto nie posiada uzupełnionego Imienia i Nazwiska. Proszę je uzupełnić, aby kontynuować.');
@@ -232,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function listenToAllUsers() {
-        if (!isAdmin) return;
+        if (!isAdmin || isWorkerPreviewMode) return;
         db.collection('users').onSnapshot(snapshot => {
             const usersList = document.getElementById('allUsersList');
             if (!usersList) return;
@@ -312,11 +349,13 @@ document.addEventListener('DOMContentLoaded', function() {
         projectsList.innerHTML = '';
         projectSelect.innerHTML = '<option value="">-- Wybierz projekt --</option>';
 
+        const canDeleteProjects = isAdmin && !isWorkerPreviewMode;
+
         globalProjects.forEach(p => {
             const li = document.createElement('li');
             li.innerHTML = `
                 <span>${p.name}</span>
-                ${isAdmin ? `<button class="btn-delete" onclick="deleteProject('${p.id}')">Usuń</button>` : ''}
+                ${canDeleteProjects ? `<button class="btn-delete" onclick="deleteProject('${p.id}')">Usuń</button>` : ''}
             `;
             projectsList.appendChild(li);
 
@@ -379,7 +418,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             globalTimeEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-            if (isAdmin) updateEmployeeSelectOptions(Array.from(workersSet));
+            if (isAdmin && !isWorkerPreviewMode) updateEmployeeSelectOptions(Array.from(workersSet));
             renderTable();
         }, err => {
             console.error("Błąd podczas pobierania wpisów z bazy:", err);
@@ -498,9 +537,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectedProject = projectFilterSelect ? projectFilterSelect.value : 'ALL';
         const selectedType = typeFilterSelect ? typeFilterSelect.value : 'ALL';
 
+        const effectivelyAdmin = isAdmin && !isWorkerPreviewMode;
+
         let entriesToRender = globalTimeEntries.filter(entry => {
-            if (!isAdmin && entry.userId !== currentUser.uid) return false;
-            if (isAdmin && selectedEmp !== 'ALL' && entry.userName !== selectedEmp) return false;
+            if (!effectivelyAdmin && entry.userId !== currentUser.uid) return false;
+            if (effectivelyAdmin && selectedEmp !== 'ALL' && entry.userName !== selectedEmp) return false;
             if (selectedProject !== 'ALL' && entry.project !== selectedProject) return false;
             if (selectedType !== 'ALL' && entry.type !== selectedType) return false;
             if (selectedMonth && entry.date && !entry.date.startsWith(selectedMonth)) return false;
@@ -521,7 +562,7 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (entry.type === 'Urlop wypoczynkowy') vacationEntries++;
             else if (entry.type === 'Zwolnienie lekarskie') sickEntries++;
 
-            const canDelete = isAdmin || entry.userId === currentUser.uid;
+            const canDelete = effectivelyAdmin || entry.userId === currentUser.uid;
 
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -585,7 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const todayStr = new Date().toISOString().split('T')[0];
     const validityDate = new Date();
-    validityDate.setDate(validityDate.getDate() + 30); // Domyślnie ważna 30 dni
+    validityDate.setDate(validityDate.getDate() + 30);
     const validityStr = validityDate.toISOString().split('T')[0];
 
     if (workDateInput) workDateInput.valueAsDate = new Date();
