@@ -246,7 +246,7 @@ button {
 }
 
 .btn-primary { background-color: var(--accent-amber); color: #000; }
-.btn-secondary { background-color: #475569; color: white; width: auto; padding: 12px 20px; }
+.btn-secondary { background-color: #475569; color: white; width: auto; padding: 10px 16px; }
 .btn-success { background-color: var(--accent-green); color: white; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 20px; }
 
 .stats-grid {
@@ -310,6 +310,11 @@ button {
     font-weight: 600;
 }
 
+.report-table input {
+    padding: 8px;
+    font-size: 14px;
+}
+
 .print-header { display: none; }
 
 /* Badges */
@@ -349,7 +354,7 @@ button {
 }
 
 /* ========================================================================= */
-/* STYLIZACJA WYDRUKU / PDF (Automatyczna dla PC i telefonów)                 */
+/* STYLIZACJA WYDRUKU / PDF                                                  */
 /* ========================================================================= */
 @media print {
     body {
@@ -372,29 +377,5 @@ button {
         margin-bottom: 20px;
         border-bottom: 2px solid #000;
         padding-bottom: 10px;
-    }
-    .print-header h2 {
-        margin: 0 0 5px 0;
-        font-size: 20px;
-        color: #000;
-    }
-    .print-header p {
-        margin: 0;
-        font-size: 13px;
-        color: #333;
-    }
-    .report-table-container {
-        border: none !important;
-        background: #ffffff !important;
-        border-radius: 0 !important;
-    }
-    .report-table th {
-        background-color: #f1f5f9 !important;
-        color: #000 !important;
-        border-bottom: 2px solid #000 !important;
-    }
-    .report-table td {
-        color: #000 !important;
-        border-bottom: 1px solid #cbd5e1 !important;
     }
 }

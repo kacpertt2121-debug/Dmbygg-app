@@ -203,6 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const roleBadge = document.getElementById('roleBadge');
         const employeeFilterGroup = document.getElementById('employeeFilterGroup');
         const adminUsersCard = document.getElementById('adminUsersCard');
+        const adminQuotesCard = document.getElementById('adminQuotesCard');
 
         if (roleBadge) {
             if (isAdmin) {
@@ -210,12 +211,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 roleBadge.className = 'badge badge-admin';
                 if (employeeFilterGroup) employeeFilterGroup.style.display = 'block';
                 if (adminUsersCard) adminUsersCard.style.display = 'block';
+                if (adminQuotesCard) adminQuotesCard.style.display = 'block';
                 listenToAllUsers();
             } else {
                 roleBadge.textContent = 'PRACOWNIK';
                 roleBadge.className = 'badge badge-worker';
                 if (employeeFilterGroup) employeeFilterGroup.style.display = 'none';
                 if (adminUsersCard) adminUsersCard.style.display = 'none';
+                if (adminQuotesCard) adminQuotesCard.style.display = 'none';
             }
         }
 
@@ -444,7 +447,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // BADGES PO ANGIELSKU
     function renderTypeBadge(type) {
         switch (type) {
             case 'Praca': return `<span class="badge badge-work">Work</span>`;
@@ -538,7 +540,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         totalHoursSpan.textContent = `${totalHours} h`;
         
-        // Aktualizacja nagłówka wydruku PDF
         const printProjectName = document.getElementById('printProjectName');
         const printTypeName = document.getElementById('printTypeName');
         const printMonthName = document.getElementById('printMonthName');
@@ -579,13 +580,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const workDateInput = document.getElementById('workDate');
-    if (workDateInput) {
-        workDateInput.valueAsDate = new Date();
-    }
+    const quoteDateInput = document.getElementById('quoteDate');
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (workDateInput) workDateInput.valueAsDate = new Date();
+    if (quoteDateInput) quoteDateInput.value = todayStr;
 
-    // =========================================================================
-    // DRUK / ZAPIS DO PDF
-    // =========================================================================
+    // DRUK / ZAPIS DO PDF (Raport godzin)
     const exportPdfBtn = document.getElementById('exportPdfBtn');
     if (exportPdfBtn) {
         exportPdfBtn.addEventListener('click', function() {
@@ -597,4 +597,117 @@ document.addEventListener('DOMContentLoaded', function() {
             window.print();
         });
     }
+
+    // =========================================================================
+    // LOGIKA MODUŁU OFERT (Materiały, Robocizna, Moms 25%, ROT 30%)
+    // =========================================================================
+    
+    // Dodanie domyślnych wierszy przy starcie
+    setTimeout(() => {
+        addMaterialRow();
+        addLaborRow();
+    }, 500);
+
+    window.addMaterialRow = function() {
+        const tbody = document.getElementById('materialsList');
+        if (!tbody) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="text" class="m-name" placeholder="np. Płyta K-G 12.5mm"></td>
+            <td><input type="number" class="m-qty" value="1" min="0" step="any" oninput="calculateQuoteTotals()"></td>
+            <td><input type="text" class="m-unit" value="szt."></td>
+            <td><input type="number" class="m-price" value="0" min="0" step="0.01" oninput="calculateQuoteTotals()"></td>
+            <td class="m-total">0.00 SEK</td>
+            <td class="no-print"><button class="btn-delete" onclick="this.closest('tr').remove(); calculateQuoteTotals();">&times;</button></td>
+        `;
+        tbody.appendChild(tr);
+        calculateQuoteTotals();
+    };
+
+    window.addLaborRow = function() {
+        const tbody = document.getElementById('laborList');
+        if (!tbody) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="text" class="l-name" placeholder="np. Montaż ścianki działowej"></td>
+            <td><input type="number" class="l-qty" value="1" min="0" step="any" oninput="calculateQuoteTotals()"></td>
+            <td><input type="text" class="l-unit" value="rbg"></td>
+            <td><input type="number" class="l-price" value="0" min="0" step="0.01" oninput="calculateQuoteTotals()"></td>
+            <td class="l-total">0.00 SEK</td>
+            <td class="no-print"><button class="btn-delete" onclick="this.closest('tr').remove(); calculateQuoteTotals();">&times;</button></td>
+        `;
+        tbody.appendChild(tr);
+        calculateQuoteTotals();
+    };
+
+    window.calculateQuoteTotals = function() {
+        let materialsSum = 0;
+        document.querySelectorAll('#materialsList tr').forEach(row => {
+            const qty = parseFloat(row.querySelector('.m-qty').value) || 0;
+            const price = parseFloat(row.querySelector('.m-price').value) || 0;
+            const total = qty * price;
+            const totalCell = row.querySelector('.m-total');
+            if (totalCell) totalCell.textContent = total.toFixed(2) + ' SEK';
+            materialsSum += total;
+        });
+
+        let laborSum = 0;
+        document.querySelectorAll('#laborList tr').forEach(row => {
+            const qty = parseFloat(row.querySelector('.l-qty').value) || 0;
+            const price = parseFloat(row.querySelector('.l-price').value) || 0;
+            const total = qty * price;
+            const totalCell = row.querySelector('.l-total');
+            if (totalCell) totalCell.textContent = total.toFixed(2) + ' SEK';
+            laborSum += total;
+        });
+
+        const netTotal = materialsSum + laborSum;
+        const vatAmount = netTotal * 0.25; // Szwedzki podatek Moms 25%
+        let grandTotal = netTotal + vatAmount;
+
+        const rotCheckbox = document.getElementById('rotCheckbox');
+        const rotRow = document.getElementById('rotRow');
+
+        if (rotCheckbox && rotCheckbox.checked) {
+            if (rotRow) rotRow.style.display = 'flex';
+            // ROT-avdrag: 30% zniżki na koszty robocizny (wliczając Moms na robociznę), max 50 000 SEK
+            let laborGross = laborSum * 1.25;
+            let rotDiscount = laborGross * 0.30;
+            if (rotDiscount > 50000) {
+                rotDiscount = 50000;
+            }
+
+            const sumRot = document.getElementById('sumRot');
+            if (sumRot) sumRot.textContent = '-' + rotDiscount.toFixed(2) + ' SEK';
+            grandTotal -= rotDiscount;
+        } else {
+            if (rotRow) rotRow.style.display = 'none';
+        }
+
+        const sumMaterials = document.getElementById('sumMaterials');
+        const sumLabor = document.getElementById('sumLabor');
+        const sumVat = document.getElementById('sumVat');
+        const sumTotal = document.getElementById('sumTotal');
+
+        if (sumMaterials) sumMaterials.textContent = materialsSum.toFixed(2) + ' SEK';
+        if (sumLabor) sumLabor.textContent = laborSum.toFixed(2) + ' SEK';
+        if (sumVat) sumVat.textContent = vatAmount.toFixed(2) + ' SEK';
+        if (sumTotal) sumTotal.textContent = grandTotal.toFixed(2) + ' SEK';
+    };
+
+    window.generateQuotePDF = function() {
+        const element = document.getElementById('quotePdfContent');
+        const clientNameInput = document.getElementById('quoteClientName');
+        const clientName = clientNameInput && clientNameInput.value.trim() ? clientNameInput.value.trim() : 'Klient';
+
+        const opt = {
+            margin:       10,
+            filename:     `Oferta_DM_Bygg_${clientName.replace(/\s+/g, '_')}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save();
+    };
 });
