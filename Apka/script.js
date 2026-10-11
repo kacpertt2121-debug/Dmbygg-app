@@ -599,24 +599,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // =========================================================================
-    // LOGIKA MODUŁU OFERT (Angielski / Szwedzki + Dynamiczne wiersze + ROT)
+    // LOGIKA MODUŁU OFERT (Angielski / Szwedzki + Vata i ROT)
     // =========================================================================
     
     setTimeout(() => {
         addMaterialRow();
         addLaborRow();
-        changeQuoteLanguage(); // Ustawienie domyślnych etykiet (angielski)
+        changeQuoteLanguage();
     }, 500);
 
-    // Słownik tłumaczeń dla ofert (Angielski / Szwedzki)
     const quoteTranslations = {
         en: {
             subtitle: "Official Price Quote",
+            issuerAddressLabel: "Company Address:",
+            issuerOrgLabel: "Org. nr:",
+            issuerEmailLabel: "Email:",
+            issuerPhoneLabel: "Phone:",
             headerTitle: "QUOTE / OFFER",
             quoteNo: "No",
             date: "Date",
             clientLabel: "Client / Company:",
             addressLabel: "Investment Address:",
+            clientEmailLabel: "Client Email:",
+            clientPhoneLabel: "Client Phone:",
             materialsHeader: "1. Materials",
             thMaterialName: "Material Name / Description",
             thQty: "Qty",
@@ -632,27 +637,37 @@ document.addEventListener('DOMContentLoaded', function() {
             thRate: "Rate (SEK)",
             thLaborTotal: "Total (SEK)",
             btnAddLabor: "+ Add Labor Position",
+            vatTitle: "Add Moms (VAT 25%)",
+            vatDesc: "Check to include standard Swedish 25% VAT to the total net amount.",
             rotTitle: "Apply ROT-avdrag deduction (30%)",
             rotDesc: "Deducts 30% from labor costs according to Swedish tax regulations (up to 50,000 SEK limit).",
             sumMaterials: "Materials Sum:",
             sumLabor: "Labor Sum:",
-            sumVat: "Moms (VAT 25%):",
+            sumNet: "Net Total:",
+            sumVatText: "Moms (VAT 25%):",
             rotDeduction: "ROT Deduction (-30%):",
-            grandTotal: "TOTAL GROSS:",
+            grandTotal: "TOTAL AMOUNT:",
             printBtnText: "Drukuj / Zapisz ofertę jako PDF"
         },
         sv: {
             subtitle: "Officiell Offert",
+            issuerAddressLabel: "Företagsadress:",
+            issuerOrgLabel: "Org. nr:",
+            issuerEmailLabel: "E-post:",
+            issuerPhoneLabel: "Telefon:",
             headerTitle: "OFFERT",
             quoteNo: "Nr",
             date: "Datum",
             clientLabel: "Kund / Företag:",
             addressLabel: "Projektadress:",
+            clientEmailLabel: "Kund E-post:",
+            clientPhoneLabel: "Kund Telefon:",
             materialsHeader: "1. Material",
             thMaterialName: "Materialnamn / Beskrivning",
             thQty: "Antal",
             thUnit: "Enhet",
             thUnitPrice: "Á-pris (SEK)",
+            thTotalt: "Totalt (SEK)",
             thTotal: "Totalt (SEK)",
             action: "Åtgärd",
             btnAddMaterial: "+ Lägg till material",
@@ -663,13 +678,16 @@ document.addEventListener('DOMContentLoaded', function() {
             thRate: "Timpris (SEK)",
             thLaborTotal: "Totalt (SEK)",
             btnAddLabor: "+ Lägg till arbete",
+            vatTitle: "Lägg till Moms (25%)",
+            vatDesc: "Klicka för att lägga till svensk standard Moms (25%) på nettosumman.",
             rotTitle: "Tillämpa ROT-avdrag (30%)",
             rotDesc: "Drar av 30% på arbetskostnaden enligt Skatteverkets regler (upp till 50 000 SEK per person).",
             sumMaterials: "Summa Material:",
             sumLabor: "Summa Arbete:",
-            sumVat: "Moms (25%):",
+            sumNet: "Nettosumma:",
+            sumVatText: "Moms (25%):",
             rotDeduction: "ROT-avdrag (-30%):",
-            grandTotal: "ATT BETALA BRUTTO:",
+            grandTotal: "ATT BETALA:",
             printBtnText: "Skriv ut / Spara offert som PDF"
         }
     };
@@ -681,11 +699,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const t = quoteTranslations[lang];
 
         document.getElementById('lblSubtitle').textContent = t.subtitle;
+        document.getElementById('lblIssuerAddressLabel').textContent = t.issuerAddressLabel;
+        document.getElementById('lblIssuerOrgLabel').textContent = t.issuerOrgLabel;
+        document.getElementById('lblIssuerEmailLabel').textContent = t.issuerEmailLabel;
+        document.getElementById('lblIssuerPhoneLabel').textContent = t.issuerPhoneLabel;
         document.getElementById('lblHeaderTitle').textContent = t.headerTitle;
         document.getElementById('lblQuoteNoText').textContent = t.quoteNo;
         document.getElementById('lblDateText').textContent = t.date;
         document.getElementById('lblClientLabel').textContent = t.clientLabel;
         document.getElementById('lblAddressLabel').textContent = t.addressLabel;
+        document.getElementById('lblClientEmailLabel').textContent = t.clientEmailLabel;
+        document.getElementById('lblClientPhoneLabel').textContent = t.clientPhoneLabel;
         document.getElementById('lblMaterialsHeader').textContent = t.materialsHeader;
         document.getElementById('thMaterialName').textContent = t.thMaterialName;
         document.getElementById('thQty').textContent = t.thQty;
@@ -700,11 +724,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('thRate').textContent = t.thRate;
         document.getElementById('thLaborTotal').textContent = t.thLaborTotal;
         document.getElementById('btnAddLabor').textContent = t.btnAddLabor;
+        document.getElementById('lblVatTitle').textContent = t.vatTitle;
+        document.getElementById('lblVatDesc').textContent = t.vatDesc;
         document.getElementById('lblRotTitle').textContent = t.rotTitle;
         document.getElementById('lblRotDesc').textContent = t.rotDesc;
         document.getElementById('lblSumMaterials').textContent = t.sumMaterials;
         document.getElementById('lblSumLabor').textContent = t.sumLabor;
-        document.getElementById('lblSumVat').textContent = t.sumVat;
+        document.getElementById('lblSumNet').textContent = t.sumNet;
+        document.getElementById('lblSumVatText').textContent = t.sumVatText;
         document.getElementById('lblRotDeduction').textContent = t.rotDeduction;
         document.getElementById('lblGrandTotal').innerHTML = `<strong>${t.grandTotal}</strong>`;
         document.getElementById('lblPrintBtnText').textContent = t.printBtnText;
@@ -764,16 +791,32 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         const netTotal = materialsSum + laborSum;
-        const vatAmount = netTotal * 0.25; // Szwedzki Moms 25%
-        let grandTotal = netTotal + vatAmount;
+        let grandTotal = netTotal;
 
+        // Obsługa podatku Moms (25%) na przycisk (checkbox)
+        const vatCheckbox = document.getElementById('vatCheckbox');
+        const vatRow = document.getElementById('vatRow');
+        let vatAmount = 0;
+
+        if (vatCheckbox && vatCheckbox.checked) {
+            if (vatRow) vatRow.style.display = 'flex';
+            vatAmount = netTotal * 0.25;
+            grandTotal += vatAmount;
+            const sumVat = document.getElementById('sumVat');
+            if (sumVat) sumVat.textContent = vatAmount.toFixed(2) + ' SEK';
+        } else {
+            if (vatRow) vatRow.style.display = 'none';
+        }
+
+        // Obsługa ROT-avdrag (30%)
         const rotCheckbox = document.getElementById('rotCheckbox');
         const rotRow = document.getElementById('rotRow');
 
         if (rotCheckbox && rotCheckbox.checked) {
             if (rotRow) rotRow.style.display = 'flex';
-            let laborGross = laborSum * 1.25;
-            let rotDiscount = laborGross * 0.30;
+            // ROT dotyczy robocizny brutto (lub netto w zależności od zaznaczenia Moms; tutaj liczymy standardowo od robocizny z uwzględnieniem Moms lub bez)
+            let laborBase = vatCheckbox && vatCheckbox.checked ? (laborSum * 1.25) : laborSum;
+            let rotDiscount = laborBase * 0.30;
             if (rotDiscount > 50000) {
                 rotDiscount = 50000; // Limit 50 000 SEK
             }
@@ -787,12 +830,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const sumMaterials = document.getElementById('sumMaterials');
         const sumLabor = document.getElementById('sumLabor');
-        const sumVat = document.getElementById('sumVat');
+        const sumNet = document.getElementById('sumNet');
         const sumTotal = document.getElementById('sumTotal');
 
         if (sumMaterials) sumMaterials.textContent = materialsSum.toFixed(2) + ' SEK';
         if (sumLabor) sumLabor.textContent = laborSum.toFixed(2) + ' SEK';
-        if (sumVat) sumVat.textContent = vatAmount.toFixed(2) + ' SEK';
+        if (sumNet) sumNet.textContent = netTotal.toFixed(2) + ' SEK';
         if (sumTotal) sumTotal.textContent = grandTotal.toFixed(2) + ' SEK';
     };
 });

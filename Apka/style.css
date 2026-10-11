@@ -354,7 +354,7 @@ button {
 }
 
 /* ========================================================================= */
-/* STYLIZACJA WYDRUKU / PDF (Identyczna dla godzin i ofert)                   */
+/* STYLIZACJA WYDRUKU / PDF                                                  */
 /* ========================================================================= */
 @media print {
     body {
@@ -402,7 +402,6 @@ button {
         color: #000 !important;
         border-bottom: 1px solid #cbd5e1 !important;
     }
-    /* Styl pól tekstowych w ofercie przy druku na czysto */
     input, select, textarea {
         background: transparent !important;
         color: #000000 !important;

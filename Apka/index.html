@@ -129,7 +129,7 @@
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                         </div>
                         <h3>Stwórz Ofertę</h3>
-                        <p>Wycena z materiałami, Moms 25% i ROT</p>
+                        <p>Wycena z materiałami, Moms i ROT</p>
                     </div>
 
                     <div class="dashboard-card" onclick="switchView('profileView')">
@@ -153,7 +153,7 @@
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                         </div>
                         <h3>Informacje</h3>
-                        <p>DM Bygg Cloud v3.7</p>
+                        <p>DM Bygg Cloud v3.8</p>
                     </div>
                 </div>
             </div>
@@ -347,9 +347,9 @@
                 </button>
             </div>
 
-            <!-- MODUŁ TWORZENIA OFERT (Z wyborem języka i natywnym drukiem PDF) -->
+            <!-- MODUŁ TWORZENIA OFERT -->
             <div id="quotesView" class="view-section">
-                <!-- Pasek wyboru języka na samej górze (tylko do podglądu/edycji, znika przy druku) -->
+                <!-- Pasek wyboru języka (tylko ekran) -->
                 <div class="no-print" style="background: var(--bg-card); padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);">
                     <div>
                         <label for="quoteLangSelect" style="margin: 0; font-weight: bold; color: var(--accent-amber);">Język oferty (Language / Språk):</label>
@@ -364,11 +364,17 @@
 
                 <div class="card" id="quotePdfContent" style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 30px; border-radius: 12px;">
                     
-                    <!-- Nagłówek drukowany / PDF -->
+                    <!-- Nagłówek dokumentu / Dane firmy i wystawiającego -->
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
                         <div>
                             <h2>DM BYGG AB</h2>
                             <p class="subtitle" id="lblSubtitle">Official Price Quote</p>
+                            <div style="margin-top: 10px; font-size: 13px; color: var(--text-secondary);">
+                                <p style="margin: 2px 0;"><strong id="lblIssuerAddressLabel">Company Address:</strong> <input type="text" id="issuerAddress" value="Storgatan 1, 400 10 Göteborg" class="inline-input" style="width: 220px;"></p>
+                                <p style="margin: 2px 0;"><strong id="lblIssuerOrgLabel">Org. nr:</strong> <input type="text" id="issuerOrg" value="556999-1234" class="inline-input" style="width: 130px;"></p>
+                                <p style="margin: 2px 0;"><strong id="lblIssuerEmailLabel">Email:</strong> <input type="text" id="issuerEmail" value="kontakt@dmbygg.se" class="inline-input" style="width: 180px;"></p>
+                                <p style="margin: 2px 0;"><strong id="lblIssuerPhoneLabel">Phone:</strong> <input type="text" id="issuerPhone" value="+46 70 123 45 67" class="inline-input" style="width: 140px;"></p>
+                            </div>
                         </div>
                         <div style="text-align: right;">
                             <h3 id="lblHeaderTitle">QUOTE / OFFER</h3>
@@ -377,6 +383,7 @@
                         </div>
                     </div>
 
+                    <!-- Dane Klienta (Imię/Firma, Adres, Email, Telefon) -->
                     <div class="form-grid" style="margin-bottom: 20px;">
                         <div class="form-group">
                             <label id="lblClientLabel" for="quoteClientName">Client / Company:</label>
@@ -385,6 +392,14 @@
                         <div class="form-group">
                             <label id="lblAddressLabel" for="quoteClientAddress">Investment Address:</label>
                             <input type="text" id="quoteClientAddress" placeholder="np. Storgatan 12, Göteborg">
+                        </div>
+                        <div class="form-group">
+                            <label id="lblClientEmailLabel" for="quoteClientEmail">Client Email:</label>
+                            <input type="email" id="quoteClientEmail" placeholder="np. klient@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label id="lblClientPhoneLabel" for="quoteClientPhone">Client Phone:</label>
+                            <input type="tel" id="quoteClientPhone" placeholder="np. +46 70 987 65 43">
                         </div>
                     </div>
 
@@ -430,14 +445,26 @@
 
                     <hr class="divider" style="margin: 25px 0;">
 
-                    <!-- PODSUMOWANIE I ROT-AVDRAG -->
+                    <!-- PODSUMOWANIE, MOMS (PRZYCISK) I ROT-AVDRAG -->
                     <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; align-items: flex-start;">
-                        <div style="flex: 1; min-width: 280px; background: #152238; padding: 18px; border-radius: 10px; border: 1px solid var(--border-color);">
-                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 8px;">
-                                <input type="checkbox" id="rotCheckbox" onchange="calculateQuoteTotals()" style="width: auto; cursor: pointer;">
-                                <strong id="lblRotTitle" style="color: var(--accent-amber);">Apply ROT-avdrag deduction (30%)</strong>
-                            </label>
-                            <p id="lblRotDesc" style="font-size: 13px; color: var(--text-secondary); margin: 0;">Deducts 30% from labor costs according to Swedish tax regulations (up to 50,000 SEK limit).</p>
+                        <div style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 15px;">
+                            <!-- Przycisk / Checkbox podatku Moms 25% -->
+                            <div style="background: #152238; padding: 18px; border-radius: 10px; border: 1px solid var(--border-color);">
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 8px;">
+                                    <input type="checkbox" id="vatCheckbox" onchange="calculateQuoteTotals()" style="width: auto; cursor: pointer;">
+                                    <strong id="lblVatTitle" style="color: var(--accent-amber);">Add Moms (VAT 25%)</strong>
+                                </label>
+                                <p id="lblVatDesc" style="font-size: 13px; color: var(--text-secondary); margin: 0;">Check to include standard Swedish 25% VAT to the total net amount.</p>
+                            </div>
+
+                            <!-- Checkbox ROT-avdrag -->
+                            <div style="background: #152238; padding: 18px; border-radius: 10px; border: 1px solid var(--border-color);">
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 8px;">
+                                    <input type="checkbox" id="rotCheckbox" onchange="calculateQuoteTotals()" style="width: auto; cursor: pointer;">
+                                    <strong id="lblRotTitle" style="color: var(--accent-amber);">Apply ROT-avdrag deduction (30%)</strong>
+                                </label>
+                                <p id="lblRotDesc" style="font-size: 13px; color: var(--text-secondary); margin: 0;">Deducts 30% from labor costs according to Swedish tax regulations (up to 50,000 SEK limit).</p>
+                            </div>
                         </div>
 
                         <div style="width: 320px; background: #152238; padding: 18px; border-radius: 10px; border: 1px solid var(--border-color);">
@@ -450,7 +477,11 @@
                                 <strong id="sumLabor">0.00 SEK</strong>
                             </div>
                             <div class="summary-row" style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px;">
-                                <span id="lblSumVat" style="color: var(--text-secondary);">Moms (VAT 25%):</span>
+                                <span id="lblSumNet" style="color: var(--text-secondary);">Net Total:</span>
+                                <strong id="sumNet">0.00 SEK</strong>
+                            </div>
+                            <div class="summary-row" id="vatRow" style="display: none; justify-content: space-between; margin-bottom: 8px; font-size: 14px; color: var(--accent-blue);">
+                                <span id="lblSumVatText">Moms (VAT 25%):</span>
                                 <strong id="sumVat">0.00 SEK</strong>
                             </div>
                             <div class="summary-row" id="rotRow" style="display: none; justify-content: space-between; margin-bottom: 8px; font-size: 14px; color: var(--accent-green);">
@@ -458,7 +489,7 @@
                                 <strong id="sumRot">-0.00 SEK</strong>
                             </div>
                             <div style="border-top: 2px solid var(--border-color); margin-top: 10px; padding-top: 10px; display: flex; justify-content: space-between; font-size: 16px;">
-                                <span id="lblGrandTotal"><strong>TOTAL GROSS:</strong></span>
+                                <span id="lblGrandTotal"><strong>TOTAL AMOUNT:</strong></span>
                                 <strong id="sumTotal" style="color: var(--accent-amber);">0.00 SEK</strong>
                             </div>
                         </div>
