@@ -581,9 +581,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const workDateInput = document.getElementById('workDate');
     const quoteDateInput = document.getElementById('quoteDate');
+    const quoteValidityDateInput = document.getElementById('quoteValidityDate');
+    
     const todayStr = new Date().toISOString().split('T')[0];
+    const validityDate = new Date();
+    validityDate.setDate(validityDate.getDate() + 30); // Domyślnie ważna 30 dni
+    const validityStr = validityDate.toISOString().split('T')[0];
+
     if (workDateInput) workDateInput.valueAsDate = new Date();
     if (quoteDateInput) quoteDateInput.value = todayStr;
+    if (quoteValidityDateInput) quoteValidityDateInput.value = validityStr;
 
     // DRUK / ZAPIS DO PDF (Raport godzin)
     const exportPdfBtn = document.getElementById('exportPdfBtn');
@@ -599,13 +606,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // =========================================================================
-    // LOGIKA MODUŁU OFERT (Angielski / Szwedzki + Vata i ROT)
+    // LOGIKA MODUŁU OFERT
     // =========================================================================
     
     setTimeout(() => {
         addMaterialRow();
         addLaborRow();
         changeQuoteLanguage();
+        toggleCustomColumns();
     }, 500);
 
     const quoteTranslations = {
@@ -618,8 +626,9 @@ document.addEventListener('DOMContentLoaded', function() {
             headerTitle: "QUOTE / OFFER",
             quoteNo: "No",
             date: "Date",
+            validityText: "Valid until",
             clientLabel: "Client / Company:",
-            addressLabel: "Investment Address:",
+            addressLabel: "Investment Address & Postal Code:",
             clientEmailLabel: "Client Email:",
             clientPhoneLabel: "Client Phone:",
             materialsHeader: "1. Materials",
@@ -658,8 +667,9 @@ document.addEventListener('DOMContentLoaded', function() {
             headerTitle: "OFFERT",
             quoteNo: "Nr",
             date: "Datum",
+            validityText: "Giltig till",
             clientLabel: "Kund / Företag:",
-            addressLabel: "Projektadress:",
+            addressLabel: "Projektadress & Postnummer:",
             clientEmailLabel: "Kund E-post:",
             clientPhoneLabel: "Kund Telefon:",
             materialsHeader: "1. Material",
@@ -667,7 +677,6 @@ document.addEventListener('DOMContentLoaded', function() {
             thQty: "Antal",
             thUnit: "Enhet",
             thUnitPrice: "Á-pris (SEK)",
-            thTotalt: "Totalt (SEK)",
             thTotal: "Totalt (SEK)",
             action: "Åtgärd",
             btnAddMaterial: "+ Lägg till material",
@@ -706,6 +715,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('lblHeaderTitle').textContent = t.headerTitle;
         document.getElementById('lblQuoteNoText').textContent = t.quoteNo;
         document.getElementById('lblDateText').textContent = t.date;
+        document.getElementById('lblValidityText').textContent = t.validityText;
         document.getElementById('lblClientLabel').textContent = t.clientLabel;
         document.getElementById('lblAddressLabel').textContent = t.addressLabel;
         document.getElementById('lblClientEmailLabel').textContent = t.clientEmailLabel;
@@ -737,19 +747,32 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('lblPrintBtnText').textContent = t.printBtnText;
     };
 
+    window.toggleCustomColumns = function() {
+        const showQty = document.getElementById('toggleQty').checked;
+        const showUnitPrice = document.getElementById('toggleUnitPrice').checked;
+
+        document.querySelectorAll('.col-qty').forEach(el => {
+            el.style.display = showQty ? '' : 'none';
+        });
+        document.querySelectorAll('.col-unit-price').forEach(el => {
+            el.style.display = showUnitPrice ? '' : 'none';
+        });
+    };
+
     window.addMaterialRow = function() {
         const tbody = document.getElementById('materialsList');
         if (!tbody) return;
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><input type="text" class="m-name" placeholder="np. Płyta K-G"></td>
-            <td><input type="number" class="m-qty" value="1" min="0" step="any" oninput="calculateQuoteTotals()"></td>
-            <td><input type="text" class="m-unit" value="szt."></td>
-            <td><input type="number" class="m-price" value="0" min="0" step="0.01" oninput="calculateQuoteTotals()"></td>
+            <td class="col-qty"><input type="number" class="m-qty" value="1" min="0" step="any" oninput="calculateQuoteTotals()"></td>
+            <td class="col-qty"><input type="text" class="m-unit" value="szt."></td>
+            <td class="col-unit-price"><input type="number" class="m-price" value="0" min="0" step="0.01" oninput="calculateQuoteTotals()"></td>
             <td class="m-total">0.00 SEK</td>
             <td class="no-print"><button class="btn-delete" onclick="this.closest('tr').remove(); calculateQuoteTotals();">&times;</button></td>
         `;
         tbody.appendChild(tr);
+        toggleCustomColumns();
         calculateQuoteTotals();
     };
 
@@ -759,21 +782,26 @@ document.addEventListener('DOMContentLoaded', function() {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><input type="text" class="l-name" placeholder="np. Montaż ścianki"></td>
-            <td><input type="number" class="l-qty" value="1" min="0" step="any" oninput="calculateQuoteTotals()"></td>
-            <td><input type="text" class="l-unit" value="rbg"></td>
-            <td><input type="number" class="l-price" value="0" min="0" step="0.01" oninput="calculateQuoteTotals()"></td>
+            <td class="col-qty"><input type="number" class="l-qty" value="1" min="0" step="any" oninput="calculateQuoteTotals()"></td>
+            <td class="col-qty"><input type="text" class="l-unit" value="rbg"></td>
+            <td class="col-unit-price"><input type="number" class="l-price" value="0" min="0" step="0.01" oninput="calculateQuoteTotals()"></td>
             <td class="l-total">0.00 SEK</td>
             <td class="no-print"><button class="btn-delete" onclick="this.closest('tr').remove(); calculateQuoteTotals();">&times;</button></td>
         `;
         tbody.appendChild(tr);
+        toggleCustomColumns();
         calculateQuoteTotals();
     };
 
     window.calculateQuoteTotals = function() {
         let materialsSum = 0;
         document.querySelectorAll('#materialsList tr').forEach(row => {
-            const qty = parseFloat(row.querySelector('.m-qty').value) || 0;
-            const price = parseFloat(row.querySelector('.m-price').value) || 0;
+            const qtyInput = row.querySelector('.m-qty');
+            const priceInput = row.querySelector('.m-price');
+            
+            const qty = qtyInput ? (parseFloat(qtyInput.value) || 0) : 1;
+            const price = priceInput ? (parseFloat(priceInput.value) || 0) : 0;
+            
             const total = qty * price;
             const totalCell = row.querySelector('.m-total');
             if (totalCell) totalCell.textContent = total.toFixed(2) + ' SEK';
@@ -782,8 +810,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let laborSum = 0;
         document.querySelectorAll('#laborList tr').forEach(row => {
-            const qty = parseFloat(row.querySelector('.l-qty').value) || 0;
-            const price = parseFloat(row.querySelector('.l-price').value) || 0;
+            const qtyInput = row.querySelector('.l-qty');
+            const priceInput = row.querySelector('.l-price');
+
+            const qty = qtyInput ? (parseFloat(qtyInput.value) || 0) : 1;
+            const price = priceInput ? (parseFloat(priceInput.value) || 0) : 0;
+
             const total = qty * price;
             const totalCell = row.querySelector('.l-total');
             if (totalCell) totalCell.textContent = total.toFixed(2) + ' SEK';
@@ -793,7 +825,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const netTotal = materialsSum + laborSum;
         let grandTotal = netTotal;
 
-        // Obsługa podatku Moms (25%) na przycisk (checkbox)
         const vatCheckbox = document.getElementById('vatCheckbox');
         const vatRow = document.getElementById('vatRow');
         let vatAmount = 0;
@@ -808,17 +839,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (vatRow) vatRow.style.display = 'none';
         }
 
-        // Obsługa ROT-avdrag (30%)
         const rotCheckbox = document.getElementById('rotCheckbox');
         const rotRow = document.getElementById('rotRow');
 
         if (rotCheckbox && rotCheckbox.checked) {
             if (rotRow) rotRow.style.display = 'flex';
-            // ROT dotyczy robocizny brutto (lub netto w zależności od zaznaczenia Moms; tutaj liczymy standardowo od robocizny z uwzględnieniem Moms lub bez)
             let laborBase = vatCheckbox && vatCheckbox.checked ? (laborSum * 1.25) : laborSum;
             let rotDiscount = laborBase * 0.30;
             if (rotDiscount > 50000) {
-                rotDiscount = 50000; // Limit 50 000 SEK
+                rotDiscount = 50000;
             }
 
             const sumRot = document.getElementById('sumRot');
