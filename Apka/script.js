@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentUser = null;
     let currentUserProfile = null;
     let isAdmin = false;
-    let isWorkerPreviewMode = false; // Flaga trybu podglądu pracownika przez admina
+    let isWorkerPreviewMode = false;
     let globalTimeEntries = [];
     let globalProjects = [];
 
@@ -73,7 +73,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (adminToggleViewBtn) adminToggleViewBtn.style.display = 'block';
 
             if (isWorkerPreviewMode) {
-                // Tryb symulacji pracownika dla admina
                 if (roleBadge) {
                     roleBadge.textContent = 'PRACOWNIK (PODGLĄD)';
                     roleBadge.className = 'badge badge-worker';
@@ -82,7 +81,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (adminUsersCard) adminUsersCard.style.display = 'none';
                 if (adminQuotesCard) adminQuotesCard.style.display = 'none';
             } else {
-                // Pełny tryb administratora
                 if (roleBadge) {
                     roleBadge.textContent = 'ADMIN';
                     roleBadge.className = 'badge badge-admin';
@@ -93,7 +91,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 listenToAllUsers();
             }
         } else {
-            // Zwykły pracownik
             if (adminToggleViewBtn) adminToggleViewBtn.style.display = 'none';
             if (roleBadge) {
                 roleBadge.textContent = 'PRACOWNIK';
@@ -142,23 +139,30 @@ document.addEventListener('DOMContentLoaded', function() {
             auth.setPersistence(persistenceType)
                 .then(() => {
                     if (isSignUpMode) {
-                        const firstName = authFirstName.value.trim();
-                        const lastName = authLastName.value.trim();
-                        const phone = authPhone.value.trim();
+                        // Sprawdzenie limitu użytkowników (maksymalnie 3)
+                        return db.collection('users').get().then(snapshot => {
+                            if (snapshot.size >= 3) {
+                                throw new Error('Osiągnięto maksymalną liczbę 3 zarejestrowanych użytkowników w systemie. Rejestracja nowych kont jest zablokowana.');
+                            }
 
-                        return auth.createUserWithEmailAndPassword(email, password)
-                            .then(cred => {
-                                return db.collection('users').doc(cred.user.uid).set({
-                                    firstName: firstName,
-                                    lastName: lastName,
-                                    phone: phone,
-                                    email: email,
-                                    createdAt: new Date()
+                            const firstName = authFirstName.value.trim();
+                            const lastName = authLastName.value.trim();
+                            const phone = authPhone.value.trim();
+
+                            return auth.createUserWithEmailAndPassword(email, password)
+                                .then(cred => {
+                                    return db.collection('users').doc(cred.user.uid).set({
+                                        firstName: firstName,
+                                        lastName: lastName,
+                                        phone: phone,
+                                        email: email,
+                                        createdAt: new Date()
+                                    });
+                                })
+                                .then(() => {
+                                    alert('Konto zostało utworzone pomyślnie!');
                                 });
-                            })
-                            .then(() => {
-                                alert('Konto zostało utworzone pomyślnie!');
-                            });
+                        });
                     } else {
                         return auth.signInWithEmailAndPassword(email, password);
                     }
@@ -540,7 +544,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const effectivelyAdmin = isAdmin && !isWorkerPreviewMode;
 
         let entriesToRender = globalTimeEntries.filter(entry => {
+            // Zwykły użytkownik / podgląd pracownika widzi TYLKO swoje wpisy
             if (!effectivelyAdmin && entry.userId !== currentUser.uid) return false;
+            // Administrator widzi wybrane filtry
             if (effectivelyAdmin && selectedEmp !== 'ALL' && entry.userName !== selectedEmp) return false;
             if (selectedProject !== 'ALL' && entry.project !== selectedProject) return false;
             if (selectedType !== 'ALL' && entry.type !== selectedType) return false;
