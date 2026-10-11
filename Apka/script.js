@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (adminUsersCard) adminUsersCard.style.display = 'none';
             if (adminQuotesCard) adminQuotesCard.style.display = 'none';
         }
-        renderTable(); // Odśwież tabelę po zmianie uprawnień
+        renderTable();
     }
 
     // Obsługa trybu Logowania / Rejestracji
@@ -140,10 +140,10 @@ document.addEventListener('DOMContentLoaded', function() {
             auth.setPersistence(persistenceType)
                 .then(() => {
                     if (isSignUpMode) {
-                        // Sprawdzenie limitu użytkowników (maksymalnie 3)
+                        // Sprawdzenie limitu użytkowników (maksymalnie 4)
                         return db.collection('users').get().then(snapshot => {
-                            if (snapshot.size >= 3) {
-                                throw new Error('Osiągnięto maksymalną liczbę 3 zarejestrowanych użytkowników w systemie. Rejestracja nowych kont jest zablokowana.');
+                            if (snapshot.size >= 4) {
+                                throw new Error('Osiągnięto maksymalną liczbę 4 zarejestrowanych użytkowników w systemie. Rejestracja nowych kont jest zablokowana.');
                             }
 
                             const firstName = authFirstName.value.trim();
@@ -508,7 +508,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!monthSelect) return;
 
         const monthsSet = new Set();
-        // Zwykły użytkownik bierze pod uwagę tylko swoje miesiące
         const effectivelyAdmin = isAdmin && !isWorkerPreviewMode;
         
         globalTimeEntries.forEach(entry => {
@@ -549,14 +548,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const effectivelyAdmin = isAdmin && !isWorkerPreviewMode;
 
         let entriesToRender = globalTimeEntries.filter(entry => {
-            // BEZPIECZEŃSTWO: Jeśli użytkownik nie jest administratorem w trybie pełnym,
-            // sprawdzamy rygorystycznie czy wpis należy do jego UID.
             if (!effectivelyAdmin) {
                 if (!currentUser || entry.userId !== currentUser.uid) {
                     return false;
                 }
             } else {
-                // Filtry dla administratora
                 if (selectedEmp !== 'ALL' && entry.userName !== selectedEmp) return false;
             }
 
@@ -923,7 +919,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const sumTotal = document.getElementById('sumTotal');
 
         if (sumMaterials) sumMaterials.textContent = materialsSum.toFixed(2) + ' SEK';
-        if (sumLabor) sumLabor.textContent = laborSum.toFixed(2) + ' SEK';
+        if (sumLabor) sumLabor.textContent = laborSum.Tuple ? '' : laborSum.toFixed(2) + ' SEK';
         if (sumNet) sumNet.textContent = netTotal.toFixed(2) + ' SEK';
         if (sumTotal) sumTotal.textContent = grandTotal.toFixed(2) + ' SEK';
     };
