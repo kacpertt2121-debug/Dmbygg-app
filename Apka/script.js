@@ -482,12 +482,18 @@ document.addEventListener('DOMContentLoaded', function() {
         empSelect.value = currentVal;
     }
 
+    // =========================================================================
+    // REJESTRACJA GODZIN (SPRAWDZANIE SUMY DZIENNEJ I DZIELENIE NA NADGODZINY)
+    // =========================================================================
     const timeForm = document.getElementById('timeForm');
     if (timeForm) {
         timeForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const activityType = document.getElementById('activityType').value;
             const projectSelect = document.getElementById('projectName');
+            const inputHours = parseFloat(document.getElementById('hoursWorked').value) || 0;
+            const inputDate = document.getElementById('workDate').value;
+            const inputDesc = document.getElementById('workDescription').value.trim();
 
             if (activityType === 'Praca' && !projectSelect.value) {
                 alert('Wybierz projekt przy rejestrowaniu pracy.');
@@ -495,29 +501,77 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const fullName = `${currentUserProfile.firstName} ${currentUserProfile.lastName}`.trim();
-
-            const newEntry = {
+            const baseData = {
                 userId: currentUser.uid,
                 userEmail: currentUser.email,
                 userName: fullName || currentUser.email,
                 userPhone: currentUserProfile.phone || '-',
-                type: activityType,
                 project: projectSelect.value || '',
-                date: document.getElementById('workDate').value,
-                hours: parseFloat(document.getElementById('hoursWorked').value) || 0,
-                description: document.getElementById('workDescription').value.trim(),
+                date: inputDate,
+                description: inputDesc,
                 createdAt: new Date()
             };
 
-            db.collection('timeEntries').add(newEntry).then(() => {
-                document.getElementById('hoursWorked').value = '';
-                document.getElementById('workDescription').value = '';
-                projectSelect.value = '';
-                alert('✅ Wpis został pomyślnie dodany do chmury!');
-                // Zostajemy na widoku dodawania godzin, żeby można było dodać kolejne
-            }).catch(err => {
-                alert('Błąd podczas zapisywania wpisu: ' + err.message);
-            });
+            // Jeżeli dodajemy "Praca", podliczamy ile godzin Pracy ten użytkownik ma już w tym samym dniu
+            if (activityType === 'Praca') {
+                const existingHoursToday = globalTimeEntries
+                    .filter(e => e.userId === currentUser.uid && e.date === inputDate && e.type === 'Praca')
+                    .reduce((sum, e) => sum + (parseFloat(e.hours) || 0), 0);
+
+                const totalWithNew = existingHoursToday + inputHours;
+
+                if (existingHoursToday >= 8) {
+                    // Mamy już 8h pracy dzisiaj -> CAŁY ten wpis idzie do Nadgodzin
+                    const entryOvertime = { ...baseData, type: 'Nadgodziny', hours: inputHours };
+                    db.collection('timeEntries').add(entryOvertime).then(() => {
+                        document.getElementById('hoursWorked').value = '';
+                        document.getElementById('workDescription').value = '';
+                        projectSelect.value = '';
+                        alert(`⚡ Miałeś już ${existingHoursToday}h pracy w tym dniu.\nWszystkie nowe ${inputHours}h zostały automatycznie dodane jako NADGODZINY.`);
+                    }).catch(err => alert('Błąd: ' + err.message));
+
+                } else if (totalWithNew > 8) {
+                    // Część tworzy dopełnienie do 8h, a reszta idzie do Nadgodzin
+                    const normalHoursToFit = 8 - existingHoursToday;
+                    const overtimeHours = inputHours - normalHoursToFit;
+
+                    const entryNormal = { ...baseData, type: 'Praca', hours: normalHoursToFit };
+                    const entryOvertime = { ...baseData, type: 'Nadgodziny', hours: overtimeHours };
+
+                    const batch = db.batch();
+                    const ref1 = db.collection('timeEntries').doc();
+                    const ref2 = db.collection('timeEntries').doc();
+                    batch.set(ref1, entryNormal);
+                    batch.set(ref2, entryOvertime);
+
+                    batch.commit().then(() => {
+                        document.getElementById('hoursWorked').value = '';
+                        document.getElementById('workDescription').value = '';
+                        projectSelect.value = '';
+                        alert(`⚡ Dzienny limit 8h pracy przekroczony!\n\nZapisano:\n• ${normalHoursToFit}h jako Praca standardowa (dopełnienie do 8h)\n• ${overtimeHours}h jako Nadgodziny`);
+                    }).catch(err => alert('Błąd: ' + err.message));
+
+                } else {
+                    // Mniej lub równe 8h łącznie
+                    const newEntry = { ...baseData, type: 'Praca', hours: inputHours };
+                    db.collection('timeEntries').add(newEntry).then(() => {
+                        document.getElementById('hoursWorked').value = '';
+                        document.getElementById('workDescription').value = '';
+                        projectSelect.value = '';
+                        alert('✅ Wpis został pomyślnie dodany do chmury!');
+                    }).catch(err => alert('Błąd: ' + err.message));
+                }
+
+            } else {
+                // Inne typy (np. L4, Urlop itp.)
+                const newEntry = { ...baseData, type: activityType, hours: inputHours };
+                db.collection('timeEntries').add(newEntry).then(() => {
+                    document.getElementById('hoursWorked').value = '';
+                    document.getElementById('workDescription').value = '';
+                    projectSelect.value = '';
+                    alert('✅ Wpis został pomyślnie dodany do chmury!');
+                }).catch(err => alert('Błąd: ' + err.message));
+            }
         });
     }
 
@@ -645,13 +699,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td><strong>${entry.userName || 'N/A'}</strong></td>
-                <td>${renderTypeBadge(entry.type)}</td>
-                <td>${entry.project || '-'}</td>
-                <td>${entry.date || '-'}</td>
-                <td><strong>${hoursNum} h</strong></td>
-                <td>${entry.description || '-'}</td>
-                <td class="no-print">
+                <td data-label="Worker Name"><strong>${entry.userName || 'N/A'}</strong></td>
+                <td data-label="Type">${renderTypeBadge(entry.type)}</td>
+                <td data-label="Project">${entry.project || '-'}</td>
+                <td data-label="Date">${entry.date || '-'}</td>
+                <td data-label="Hours"><strong>${hoursNum} h</strong></td>
+                <td data-label="Description">${entry.description || '-'}</td>
+                <td data-label="Action" class="no-print">
                     ${canManage ? `
                         <button class="btn-edit" onclick="openEditModal('${entry.id}')">Edytuj</button>
                         <button class="btn-delete" onclick="deleteEntry('${entry.id}')">Usuń</button>
