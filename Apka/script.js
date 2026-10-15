@@ -103,6 +103,23 @@ document.addEventListener('DOMContentLoaded', function() {
         renderTable();
     }
 
+    // Ustawienie domyślnych dat na bieżący miesiąc
+    function setDefaultDateFilter() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const firstDayStr = `${year}-${month}-01`;
+        
+        const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+        const lastDayStr = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+
+        const filterStartDate = document.getElementById('filterStartDate');
+        const filterEndDate = document.getElementById('filterEndDate');
+
+        if (filterStartDate && !filterStartDate.value) filterStartDate.value = firstDayStr;
+        if (filterEndDate && !filterEndDate.value) filterEndDate.value = lastDayStr;
+    }
+
     // Obsługa trybu Logowania / Rejestracji
     let isSignUpMode = false;
     const toggleAuthModeBtn = document.getElementById('toggleAuthMode');
@@ -140,7 +157,6 @@ document.addEventListener('DOMContentLoaded', function() {
             auth.setPersistence(persistenceType)
                 .then(() => {
                     if (isSignUpMode) {
-                        // Sprawdzenie limitu użytkowników (maksymalnie 4)
                         return db.collection('users').get().then(snapshot => {
                             if (snapshot.size >= 4) {
                                 throw new Error('Osiągnięto maksymalną liczbę 4 zarejestrowanych użytkowników w systemie. Rejestracja nowych kont jest zablokowana.');
@@ -262,6 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (currentUserName) currentUserName.textContent = fullNameDisplay;
         if (currentUserEmail) currentUserEmail.textContent = user.email;
 
+        setDefaultDateFilter();
         applyUIPermissions();
 
         if (!currentUserProfile.firstName || !currentUserProfile.lastName || currentUserProfile.firstName.trim() === '' || currentUserProfile.lastName.trim() === '') {
@@ -343,6 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             renderProjects();
             updateProjectFilterOptions();
+            updateEditProjectSelectOptions();
         });
     }
 
@@ -369,6 +387,23 @@ document.addEventListener('DOMContentLoaded', function() {
             option.textContent = p.name;
             projectSelect.appendChild(option);
         });
+    }
+
+    function updateEditProjectSelectOptions() {
+        const editProjectSelect = document.getElementById('editProjectName');
+        if (!editProjectSelect) return;
+
+        const currentVal = editProjectSelect.value;
+        editProjectSelect.innerHTML = '<option value="">-- Wybierz projekt --</option>';
+
+        globalProjects.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p.name;
+            option.textContent = p.name;
+            editProjectSelect.appendChild(option);
+        });
+
+        editProjectSelect.value = currentVal;
     }
 
     function updateProjectFilterOptions() {
@@ -478,7 +513,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('hoursWorked').value = '';
                 document.getElementById('workDescription').value = '';
                 projectSelect.value = '';
-                switchView('reportView');
+                alert('✅ Wpis został pomyślnie dodany do chmury!');
+                // Zostajemy na widoku dodawania godzin, żeby można było dodać kolejne
             }).catch(err => {
                 alert('Błąd podczas zapisywania wpisu: ' + err.message);
             });
@@ -491,11 +527,60 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // LOGIKA EDYCYJNA WPISÓW
+    window.openEditModal = function(id) {
+        const entry = globalTimeEntries.find(e => e.id === id);
+        if (!entry) return;
+
+        document.getElementById('editEntryId').value = entry.id;
+        document.getElementById('editActivityType').value = entry.type || 'Praca';
+        document.getElementById('editProjectName').value = entry.project || '';
+        document.getElementById('editWorkDate').value = entry.date || '';
+        document.getElementById('editHoursWorked').value = entry.hours || '';
+        document.getElementById('editWorkDescription').value = entry.description || '';
+
+        document.getElementById('editModal').style.display = 'flex';
+    };
+
+    window.closeEditModal = function() {
+        document.getElementById('editModal').style.display = 'none';
+    };
+
+    const editEntryForm = document.getElementById('editEntryForm');
+    if (editEntryForm) {
+        editEntryForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const entryId = document.getElementById('editEntryId').value;
+            const activityType = document.getElementById('editActivityType').value;
+            const projectSelect = document.getElementById('editProjectName');
+
+            if (activityType === 'Praca' && !projectSelect.value) {
+                alert('Wybierz projekt przy rejestrowaniu pracy.');
+                return;
+            }
+
+            const updatedData = {
+                type: activityType,
+                project: projectSelect.value || '',
+                date: document.getElementById('editWorkDate').value,
+                hours: parseFloat(document.getElementById('editHoursWorked').value) || 0,
+                description: document.getElementById('editWorkDescription').value.trim()
+            };
+
+            db.collection('timeEntries').doc(entryId).update(updatedData).then(() => {
+                closeEditModal();
+            }).catch(err => {
+                alert('Błąd podczas edycji wpisu: ' + err.message);
+            });
+        });
+    }
+
     function renderTypeBadge(type) {
         switch (type) {
             case 'Praca': return `<span class="badge badge-work">Work</span>`;
             case 'Nadgodziny': return `<span class="badge badge-overtime" style="background: rgba(236, 72, 153, 0.2); color: #f472b6;">Overtime</span>`;
             case 'Urlop wypoczynkowy': return `<span class="badge badge-vacation">Vacation</span>`;
+            case 'Urlop rodzicielski': return `<span class="badge badge-parental">Parental</span>`;
             case 'Zwolnienie lekarskie': return `<span class="badge badge-sick">Sick Leave</span>`;
             case 'Święto / Dzień wolny': return `<span class="badge">Holiday</span>`;
             case 'Urlop bezpłatny': return `<span class="badge">Unpaid Leave</span>`;
@@ -503,44 +588,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function updateMonthSelect() {
-        const monthSelect = document.getElementById('monthSelect');
-        if (!monthSelect) return;
-
-        const monthsSet = new Set();
-        const effectivelyAdmin = isAdmin && !isWorkerPreviewMode;
-        
-        globalTimeEntries.forEach(entry => {
-            if (!effectivelyAdmin && entry.userId !== currentUser.uid) return;
-            if (entry.date) monthsSet.add(entry.date.substring(0, 7));
-        });
-
-        const currentSelected = monthSelect.value;
-        monthSelect.innerHTML = '<option value="">-- Wszystkie --</option>';
-
-        Array.from(monthsSet).sort().reverse().forEach(ym => {
-            const option = document.createElement('option');
-            option.value = ym;
-            option.textContent = ym;
-            monthSelect.appendChild(option);
-        });
-
-        monthSelect.value = currentSelected;
-    }
-
     function renderTable() {
         const tableBody = document.getElementById('tableBody');
         const totalHoursSpan = document.getElementById('totalHours');
-        const monthSelect = document.getElementById('monthSelect');
+        const filterStartDate = document.getElementById('filterStartDate');
+        const filterEndDate = document.getElementById('filterEndDate');
         const empSelect = document.getElementById('employeeSelect');
         const projectFilterSelect = document.getElementById('projectFilterSelect');
         const typeFilterSelect = document.getElementById('typeFilterSelect');
 
         if (!tableBody || !totalHoursSpan) return;
 
-        updateMonthSelect();
-
-        const selectedMonth = monthSelect ? monthSelect.value : '';
+        const startDate = filterStartDate ? filterStartDate.value : '';
+        const endDate = filterEndDate ? filterEndDate.value : '';
         const selectedEmp = empSelect ? empSelect.value : 'ALL';
         const selectedProject = projectFilterSelect ? projectFilterSelect.value : 'ALL';
         const selectedType = typeFilterSelect ? typeFilterSelect.value : 'ALL';
@@ -558,7 +618,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (selectedProject !== 'ALL' && entry.project !== selectedProject) return false;
             if (selectedType !== 'ALL' && entry.type !== selectedType) return false;
-            if (selectedMonth && entry.date && !entry.date.startsWith(selectedMonth)) return false;
+            
+            if (entry.date) {
+                if (startDate && entry.date < startDate) return false;
+                if (endDate && entry.date > endDate) return false;
+            }
             
             return true;
         });
@@ -574,10 +638,10 @@ document.addEventListener('DOMContentLoaded', function() {
             totalHours += hoursNum;
 
             if (entry.type === 'Praca') workEntries++;
-            else if (entry.type === 'Urlop wypoczynkowy') vacationEntries++;
+            else if (entry.type === 'Urlop wypoczynkowy' || entry.type === 'Urlop rodzicielski') vacationEntries++;
             else if (entry.type === 'Zwolnienie lekarskie') sickEntries++;
 
-            const canDelete = effectivelyAdmin || entry.userId === currentUser.uid;
+            const canManage = effectivelyAdmin || entry.userId === currentUser.uid;
 
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -588,7 +652,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td><strong>${hoursNum} h</strong></td>
                 <td>${entry.description || '-'}</td>
                 <td class="no-print">
-                    ${canDelete ? `<button class="btn-delete" onclick="deleteEntry('${entry.id}')">Usuń</button>` : ''}
+                    ${canManage ? `
+                        <button class="btn-edit" onclick="openEditModal('${entry.id}')">Edytuj</button>
+                        <button class="btn-delete" onclick="deleteEntry('${entry.id}')">Usuń</button>
+                    ` : ''}
                 </td>
             `;
             tableBody.appendChild(row);
@@ -603,7 +670,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (printProjectName) printProjectName.textContent = selectedProject === 'ALL' ? 'All' : selectedProject;
         if (printTypeName) printTypeName.textContent = selectedType === 'ALL' ? 'All' : selectedType;
-        if (printMonthName) printMonthName.textContent = selectedMonth || 'All';
+        if (printMonthName) printMonthName.textContent = (startDate || endDate) ? `${startDate || '...'} do ${endDate || '...'}` : 'All';
         if (printTotalHours) printTotalHours.textContent = `${totalHours} h`;
 
         const workCount = document.getElementById('workCount');
@@ -614,20 +681,22 @@ document.addEventListener('DOMContentLoaded', function() {
         if (sickCount) sickCount.textContent = sickEntries;
     }
 
-    const monthSelect = document.getElementById('monthSelect');
+    const filterStartDate = document.getElementById('filterStartDate');
+    const filterEndDate = document.getElementById('filterEndDate');
     const employeeSelect = document.getElementById('employeeSelect');
     const projectFilterSelect = document.getElementById('projectFilterSelect');
     const typeFilterSelect = document.getElementById('typeFilterSelect');
     const resetFilterBtn = document.getElementById('resetFilterBtn');
 
-    if (monthSelect) monthSelect.addEventListener('change', renderTable);
+    if (filterStartDate) filterStartDate.addEventListener('change', renderTable);
+    if (filterEndDate) filterEndDate.addEventListener('change', renderTable);
     if (employeeSelect) employeeSelect.addEventListener('change', renderTable);
     if (projectFilterSelect) projectFilterSelect.addEventListener('change', renderTable);
     if (typeFilterSelect) typeFilterSelect.addEventListener('change', renderTable);
     
     if (resetFilterBtn) {
         resetFilterBtn.addEventListener('click', function() {
-            if (monthSelect) monthSelect.value = '';
+            setDefaultDateFilter();
             if (employeeSelect) employeeSelect.value = 'ALL';
             if (projectFilterSelect) projectFilterSelect.value = 'ALL';
             if (typeFilterSelect) typeFilterSelect.value = 'ALL';
@@ -919,7 +988,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const sumTotal = document.getElementById('sumTotal');
 
         if (sumMaterials) sumMaterials.textContent = materialsSum.toFixed(2) + ' SEK';
-        if (sumLabor) sumLabor.textContent = laborSum.Tuple ? '' : laborSum.toFixed(2) + ' SEK';
+        if (sumLabor) sumLabor.textContent = laborSum.toFixed(2) + ' SEK';
         if (sumNet) sumNet.textContent = netTotal.toFixed(2) + ' SEK';
         if (sumTotal) sumTotal.textContent = grandTotal.toFixed(2) + ' SEK';
     };

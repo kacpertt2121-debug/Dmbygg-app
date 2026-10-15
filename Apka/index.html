@@ -153,7 +153,7 @@
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                         </div>
                         <h3>Informacje</h3>
-                        <p>DM Bygg Cloud v3.12</p>
+                        <p>DM Bygg Cloud v3.15</p>
                     </div>
                 </div>
             </div>
@@ -223,6 +223,7 @@
                                 <option value="Praca">🔨 Praca standardowa</option>
                                 <option value="Nadgodziny">⚡ Nadgodziny</option>
                                 <option value="Urlop wypoczynkowy">🌴 Urlop wypoczynkowy</option>
+                                <option value="Urlop rodzicielski">👶 Urlop rodzicielski</option>
                                 <option value="Zwolnienie lekarskie">🏥 Zwolnienie lekarskie (L4)</option>
                                 <option value="Święto / Dzień wolny">🎉 Święto / Dzień wolny</option>
                                 <option value="Urlop bezpłatny">⏸️ Urlop bezpłatny</option>
@@ -262,10 +263,13 @@
                 <div class="filter-box no-print">
                     <div class="filter-inputs" style="display: flex; flex-wrap: wrap; gap: 12px;">
                         <div class="form-group" style="flex: 1; min-width: 140px;">
-                            <label for="monthSelect">Miesiąc:</label>
-                            <select id="monthSelect">
-                                <option value="">-- Wszystkie --</option>
-                            </select>
+                            <label for="filterStartDate">Data od:</label>
+                            <input type="date" id="filterStartDate">
+                        </div>
+
+                        <div class="form-group" style="flex: 1; min-width: 140px;">
+                            <label for="filterEndDate">Data do:</label>
+                            <input type="date" id="filterEndDate">
                         </div>
 
                         <div class="form-group" style="flex: 1; min-width: 140px;">
@@ -282,6 +286,7 @@
                                 <option value="Praca">Praca</option>
                                 <option value="Nadgodziny">Nadgodziny</option>
                                 <option value="Urlop wypoczynkowy">Urlop wypoczynkowy</option>
+                                <option value="Urlop rodzicielski">Urlop rodzicielski</option>
                                 <option value="Zwolnienie lekarskie">Zwolnienie lekarskie</option>
                                 <option value="Święto / Dzień wolny">Święto / Dzień wolny</option>
                                 <option value="Urlop bezpłatny">Urlop bezpłatny</option>
@@ -321,7 +326,7 @@
 
                 <div class="print-header">
                     <h2>DM BYGG - WORK HOURS REPORT</h2>
-                    <p>Project: <strong id="printProjectName">All</strong> | Type: <strong id="printTypeName">All</strong> | Month: <strong id="printMonthName">All</strong> | Total Hours: <strong id="printTotalHours">0 h</strong></p>
+                    <p>Project: <strong id="printProjectName">All</strong> | Type: <strong id="printTypeName">All</strong> | Range: <strong id="printMonthName">Current Month</strong> | Total Hours: <strong id="printTotalHours">0 h</strong></p>
                 </div>
 
                 <div class="report-table-container">
@@ -345,6 +350,60 @@
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     Pobierz / Zapisz raport jako PDF (PDF in English)
                 </button>
+            </div>
+
+            <!-- MODAL EDYCJI WPISU -->
+            <div id="editModal" class="modal-backdrop no-print" style="display: none;">
+                <div class="modal-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0; color: var(--accent-amber);">✏️ Edytuj Wpis Godzin</h3>
+                        <button type="button" class="btn-close" onclick="closeEditModal()">&times;</button>
+                    </div>
+                    <form id="editEntryForm">
+                        <input type="hidden" id="editEntryId">
+                        
+                        <div class="form-group">
+                            <label for="editActivityType">Rodzaj aktywności:</label>
+                            <select id="editActivityType" required>
+                                <option value="Praca">🔨 Praca standardowa</option>
+                                <option value="Nadgodziny">⚡ Nadgodziny</option>
+                                <option value="Urlop wypoczynkowy">🌴 Urlop wypoczynkowy</option>
+                                <option value="Urlop rodzicielski">👶 Urlop rodzicielski</option>
+                                <option value="Zwolnienie lekarskie">🏥 Zwolnienie lekarskie (L4)</option>
+                                <option value="Święto / Dzień wolny">🎉 Święto / Dzień wolny</option>
+                                <option value="Urlop bezpłatny">⏸️ Urlop bezpłatny</option>
+                                <option value="Inne">📁 Inne</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editProjectName">Projekt / Budowa:</label>
+                            <select id="editProjectName">
+                                <option value="">-- Wybierz projekt --</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editWorkDate">Data:</label>
+                            <input type="date" id="editWorkDate" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editHoursWorked">Liczba godzin:</label>
+                            <input type="number" id="editHoursWorked" step="0.5" min="0" max="24" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editWorkDescription">Opis wykonanych zadań:</label>
+                            <textarea id="editWorkDescription" rows="3"></textarea>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button type="submit" class="btn-primary" style="flex: 1;">Zapisz zmiany</button>
+                            <button type="button" class="btn-secondary" onclick="closeEditModal()" style="flex: 1;">Anuluj</button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             <!-- MODUŁ TWORZENIA OFERT -->
